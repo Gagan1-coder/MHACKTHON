@@ -1,0 +1,28 @@
+{
+  "name": "context-surgeon",
+  "version": "1.0.0",
+  "description": "Context Surgeon: Compress LLM Context Without Losing Essential Meaning",
+  "scripts": {
+    "dev": "concurrently -k -n \"backend,frontend\" -c \"cyan,magenta\" \"python run.py\" \"vite\"",
+    "server": "python run.py",
+    "client": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "python -m pytest tests/ -v",
+    "benchmark": "python benchmarks/run_benchmark.py"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "vite": "^5.4.14"
+  },
+  "keywords": [
+    "context-compression",
+    "llm",
+    "fastapi",
+    "vite",
+    "nlp",
+    "hackathon"
+  ],
+  "author": "Context Surgeon Team",
+  "license": "MIT"
+}

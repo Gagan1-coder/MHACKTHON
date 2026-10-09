@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Context Surgeon — Intelligent LLM Context Compression</title>
+  <meta name="description" content="Context Surgeon: Compress LLM context without losing essential meaning. Explainable, query-aware context optimization for AI systems." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Header / Navigation Bar -->
+  <header class="navbar" id="app-navbar">
+    <div class="nav-container">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <path d="m10 13-2 2 2 2"/>
+            <path d="m14 17 2-2-2-2"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-name">Context Surgeon</span>
+          <span class="brand-badge">PS-02 CommVault</span>
+        </div>
+      </div>
+
+      <nav class="nav-tabs" role="tablist">
+        <button class="nav-tab active" data-tab="tab-overview" id="nav-btn-overview" role="tab" aria-selected="true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          Overview
+        </button>
+        <button class="nav-tab" data-tab="tab-compressor" id="nav-btn-compressor" role="tab" aria-selected="false">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m8 17 4 4 4-4"/></svg>
+          Context Compressor
+        </button>
+        <button class="nav-tab" data-tab="tab-benchmarks" id="nav-btn-benchmarks" role="tab" aria-selected="false">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 11 3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          Benchmark Lab
+        </button>
+        <button class="nav-tab" data-tab="tab-results" id="nav-btn-results" role="tab" aria-selected="false">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          Evaluation Results
+        </button>
+        <button class="nav-tab" data-tab="tab-how-it-works" id="nav-btn-how-it-works" role="tab" aria-selected="false">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          How It Works
+        </button>
+      </nav>
+
+      <div class="nav-status">
+        <span class="status-indicator" id="backend-status-indicator"></span>
+        <span class="status-label" id="backend-status-label">Connecting...</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="main-content">
+    
+    <!-- TAB 1: OVERVIEW -->
+    <section class="tab-pane active" id="tab-overview" role="tabpanel">
+      <div class="hero-section">
+        <div class="hero-badge">
+          <span class="pulse-dot"></span>
+          MITK AI VISION 24H Hackathon | Challenge PS-02 | CommVault
+        </div>
+        <h1 class="hero-title">Compress LLM Context <span class="gradient-text">Without Losing Essential Meaning.</span></h1>
+        <p class="hero-subtitle">
+          Context Surgeon acts as a query-aware preprocessing layer before your LLM requests. It eliminates conversational bloat and duplicate boilerplate while strictly protecting critical evidence: dates, numerical calculations, negations, later corrections, and code dependencies.
+        </p>
+
+        <div class="hero-actions">
+          <button class="btn btn-primary" id="btn-hero-launch">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Launch Context Compressor
+          </button>
+          <button class="btn btn-secondary" id="btn-hero-benchmarks">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 11 3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            Explore 30 Benchmark Cases
+          </button>
+        </div>
+      </div>
+
+      <!-- Overview KPI Cards -->
+      <div class="grid grid-4 kpi-grid">
+        <div class="card kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-title">Benchmark Suite</span>
+            <span class="kpi-icon teal">🎯</span>
+          </div>
+          <div class="kpi-value" id="kpi-benchmark-count">30</div>
+          <div class="kpi-caption">Comprehensive test categories</div>
+        </div>
+
+        <div class="card kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-title">Measured Token Reduction</span>
+            <span class="kpi-icon cyan">📉</span>
+          </div>
+          <div class="kpi-value" id="kpi-token-reduction">--%</div>
+          <div class="kpi-caption">Proposal Target: &ge; 30.0%</div>
+        </div>
+
+        <div class="card kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-title">Compression Latency (p95)</span>
+            <span class="kpi-icon emerald">⚡</span>
+          </div>
+          <div class="kpi-value" id="kpi-latency">-- ms</div>
+          <div class="kpi-caption">Proposal Target: &lt; 100 ms</div>
+        </div>
+
+        <div class="card kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-title">Fact Retention Rate</span>
+            <span class="kpi-icon purple">🛡️</span>
+          </div>
+          <div class="kpi-value" id="kpi-fact-retention">--%</div>
+          <div class="kpi-caption">Critical evidence preserved</div>
+        </div>
+      </div>
+
+      <!-- Problem vs Solution Comparison -->
+      <div class="grid grid-2 info-grid">
+        <div class="card problem-card">
+          <div class="card-header">
+            <span class="card-tag tag-danger">The Problem</span>
+            <h3>Why Naive Context Compression Fails</h3>
+          </div>
+          <ul class="bullet-list">
+            <li>
+              <strong>Silent Fact Dropping:</strong> Truncation or aggressive summarizers drop critical dates, prices, and error codes.
+            </li>
+            <li>
+              <strong>Negation Inversion:</strong> Dropping "must not open Port 22" leaves "open Port 22", introducing critical security flaws.
+            </li>
+            <li>
+              <strong>Outdated Revisions:</strong> Older meeting times or promises are retained while later corrections are discarded.
+            </li>
+            <li>
+              <strong>Broken Code & Records:</strong> Code block splitting causes syntax crashes, while truncated JSON records cause parsing failures.
+            </li>
+          </ul>
+        </div>
+
+        <div class="card solution-card">
+          <div class="card-header">
+            <span class="card-tag tag-success">The Solution</span>
+            <h3>How Context Surgeon Fixes It</h3>
+          </div>
+          <ul class="bullet-list">
+            <li>
+              <strong>Query-Aware Relevance:</strong> Ranks sections by term rarity and exact entity matches instead of blind position cutting.
+            </li>
+            <li>
+              <strong>Evidence Protection Rules:</strong> Automatically locks numbers, dates, negations, corrections, and linked identifiers.
+            </li>
+            <li>
+              <strong>Python Dependency Linking:</strong> Traverses symbol definitions to pull required helper functions automatically.
+            </li>
+            <li>
+              <strong>Budget Safety Warnings:</strong> When evidence cannot safely fit within the requested budget, it issues transparent warnings rather than silently hallucinating.
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: CONTEXT COMPRESSOR -->
+    <section class="tab-pane" id="tab-compressor" role="tabpanel">
+      <div class="pane-header">
+        <div>
+          <h2>Context Compressor Studio</h2>
+          <p class="pane-subtitle">Tune context token budgets, inspect section-by-section explainability, and preserve essential evidence.</p>
+        </div>
+      </div>
+
+      <!-- Compressor Input Form -->
+      <div class="compressor-form card">
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <div class="label-row">
+              <label for="input-system-prompt">System Prompt <span class="badge-subtle">Unchanged</span></label>
+              <span class="char-count" id="sys-prompt-count">0 chars</span>
+            </div>
+            <textarea id="input-system-prompt" rows="2" placeholder="e.g. You are a helpful technical assistant. Always be concise.">You are a helpful assistant.</textarea>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <div class="label-row">
+              <label for="input-context">Supporting Context / Conversation History <span class="badge-primary">Target for Compression</span></label>
+              <span class="token-estimate" id="context-token-preview">Tokens: 0</span>
+            </div>
+            <textarea id="input-context" rows="7" placeholder="Paste your conversation history, reference logs, code snippets, or documentation here..."></textarea>
+          </div>
+        </div>
+
+        <div class="form-row grid-2-form">
+          <div class="form-group">
+            <div class="label-row">
+              <label for="input-query">Current User Query <span class="badge-subtle">Unchanged</span></label>
+            </div>
+            <input type="text" id="input-query" placeholder="e.g. What is the latest delivery date for order ORD-842?" />
+          </div>
+
+          <div class="form-group">
+            <div class="label-row">
+              <label for="input-target-tokens">Maximum Token Budget</label>
+              <span class="budget-val-badge" id="budget-badge">500 tokens</span>
+            </div>
+            <div class="budget-input-container">
+              <input type="number" id="input-target-tokens" min="10" max="50000" step="10" value="500" />
+              <div class="quick-budgets">
+                <button type="button" class="btn-chip" data-budget="35">35</button>
+                <button type="button" class="btn-chip" data-budget="50">50</button>
+                <button type="button" class="btn-chip" data-budget="100">100</button>
+                <button type="button" class="btn-chip" data-budget="250">250</button>
+                <button type="button" class="btn-chip" data-budget="500">500</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mode Selector: Fast Local vs Recursive RLM vs Auto -->
+        <div class="form-row mode-selector-row">
+          <div class="form-group flex-1">
+            <div class="label-row">
+              <label>Compression Engine Operating Mode</label>
+              <span class="badge-subtle" id="mode-desc-badge">⚡ Sub-millisecond deterministic extraction</span>
+            </div>
+            <div class="engine-mode-group">
+              <label class="mode-option active" data-mode="fast_local">
+                <input type="radio" name="compression-mode" value="fast_local" checked />
+                <div class="mode-info">
+                  <span class="mode-title">⚡ Fast Local Compression</span>
+                  <span class="mode-caption">Instant offline 5-stage algorithm. Zero external LLM calls.</span>
+                </div>
+              </label>
+              <label class="mode-option" data-mode="recursive">
+                <input type="radio" name="compression-mode" value="recursive" />
+                <div class="mode-info">
+                  <span class="mode-title">🔄 Recursive Large-Context (RLM)</span>
+                  <span class="mode-caption">Keeps context in external store, explores via sandboxed REPL.</span>
+                </div>
+              </label>
+              <label class="mode-option" data-mode="auto">
+                <input type="radio" name="compression-mode" value="auto" />
+                <div class="mode-info">
+                  <span class="mode-title">🤖 Auto Smart Mode</span>
+                  <span class="mode-caption">Fast Local for normal contexts; switches to RLM for &gt; 1,200 tokens.</span>
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <div class="options-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="chk-fallback-tokenizer" />
+              <span>Force offline fallback tokenizer</span>
+            </label>
+          </div>
+
+          <div class="buttons-group">
+            <button class="btn btn-secondary" id="btn-reset">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+              Reset
+            </button>
+            <button class="btn btn-primary" id="btn-compress">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m13 2-2 10h5L11 22l2-10H8l5-10z"/></svg>
+              Compress Context
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Warning Box (if any) -->
+      <div class="alert-box alert-warning hidden" id="compressor-warning-box">
+        <div class="alert-icon">⚠️</div>
+        <div class="alert-content" id="compressor-warning-text"></div>
+      </div>
+
+      <!-- Real Calculated Metrics Section -->
+      <div class="metrics-panel-container hidden" id="compressor-metrics-panel">
+        <div class="metrics-header">
+          <h3>Compression Execution Metrics</h3>
+          <span class="formula-caption">Formula: Reduction % = ((Original Tokens - Compressed Tokens) / Original Tokens) &times; 100</span>
+        </div>
+        <div class="metrics-cards-grid">
+          <div class="card metric-card">
+            <span class="metric-label">Active Mode</span>
+            <span class="metric-badge-status met" id="metric-engine-mode">Fast Local</span>
+          </div>
+          <div class="card metric-card">
+            <span class="metric-label">Original Tokens</span>
+            <span class="metric-number" id="metric-orig-tokens">0</span>
+          </div>
+          <div class="card metric-card">
+            <span class="metric-label">Compressed Tokens</span>
+            <span class="metric-number" id="metric-comp-tokens">0</span>
+          </div>
+          <div class="card metric-card">
+            <span class="metric-label">Tokens Removed</span>
+            <span class="metric-number" id="metric-tokens-removed">0</span>
+          </div>
+          <div class="card metric-card highlight">
+            <span class="metric-label">Actual Reduction</span>
+            <span class="metric-number" id="metric-reduction-pct">0.0%</span>
+          </div>
+          <div class="card metric-card">
+            <span class="metric-label">Engine Latency</span>
+            <span class="metric-number" id="metric-latency">0.0 ms</span>
+          </div>
+          <div class="card metric-card">
+            <span class="metric-label">Budget Status</span>
+            <span class="metric-badge-status" id="metric-budget-status">Met</span>
+          </div>
+        </div>
+
+        <!-- Recursive RLM Execution Trace (visible in recursive mode) -->
+        <div class="card rlm-trace-card hidden" id="rlm-trace-container">
+          <div class="rlm-trace-header">
+            <div class="rlm-title-group">
+              <span class="rlm-badge">RLM Architecture</span>
+              <h4>Recursive Exploration &amp; REPL Execution Trace</h4>
+            </div>
+            <div class="rlm-stats-pills">
+              <span class="pill-stat" id="rlm-stat-iterations">0 iterations</span>
+              <span class="pill-stat" id="rlm-stat-tokens">0 exploration tokens</span>
+              <span class="pill-stat" id="rlm-stat-calls">0 sub-calls</span>
+            </div>
+          </div>
+          <div class="rlm-trajectory-list" id="rlm-trajectory-list">
+            <!-- Populated dynamically with TrajectoryEvents -->
+          </div>
+        </div>
+
+        <div class="evidence-status-banner" id="compressor-evidence-banner">
+          <span class="evidence-status-icon">🛡️</span>
+          <span id="metric-evidence-status-text">All critical evidence preserved.</span>
+        </div>
+        <div class="target-reference-box">
+          <span class="ref-label">ℹ️ Benchmark Goal Reference:</span>
+          <span>Targeting &ge; 30.0% reduction without losing essential evidence. Measured reduction is calculated strictly from tokens removed by the algorithm.</span>
+        </div>
+      </div>
+
+      <!-- Side-by-Side Context Comparison -->
+      <div class="side-by-side-container hidden" id="compressor-diff-container">
+        <!-- Left Panel: Original -->
+        <div class="card context-view-panel">
+          <div class="panel-header">
+            <div class="panel-title-group">
+              <span class="panel-title">Original Supporting Context</span>
+              <span class="token-pill" id="pill-orig-tokens">0 tokens</span>
+              <span class="section-pill" id="pill-orig-sections">0 sections</span>
+            </div>
+            <button class="btn btn-icon-text" id="btn-copy-orig" title="Copy original text">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Copy
+            </button>
+          </div>
+          <div class="context-display-area" id="display-original-context"></div>
+        </div>
+
+        <!-- Right Panel: Compressed -->
+        <div class="card context-view-panel accent-border">
+          <div class="panel-header">
+            <div class="panel-title-group">
+              <span class="panel-title text-accent">Compressed Context (For LLM)</span>
+              <span class="token-pill highlight" id="pill-comp-tokens">0 tokens</span>
+              <span class="reduction-pill" id="pill-reduction-badge">-0%</span>
+            </div>
+            <div class="panel-actions">
+              <button class="btn btn-icon-text" id="btn-copy-comp" title="Copy compressed context">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                Copy Context
+              </button>
+              <button class="btn btn-icon-text" id="btn-download-comp" title="Download as text file">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download
+              </button>
+              <button class="btn btn-icon-text" id="btn-copy-json" title="Copy full API response as JSON">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                Copy JSON
+              </button>
+            </div>
+          </div>
+          <div class="context-display-area" id="display-compressed-context"></div>
+        </div>
+      </div>
+
+      <!-- Evidence Inspection Panel (Decision Audit Trail) -->
+      <div class="evidence-panel-container card hidden" id="compressor-evidence-panel">
+        <div class="evidence-header">
+          <div>
+            <h3>Explainable Section Audit Trail</h3>
+            <p class="subtitle">Detailed breakdown of segmentation, relevance ranking, and evidence protection rules.</p>
+          </div>
+          <div class="evidence-filters">
+            <span class="filter-chip active" data-filter="all">All Sections (<span id="count-all-secs">0</span>)</span>
+            <span class="filter-chip" data-filter="retained">Retained (<span id="count-ret-secs">0</span>)</span>
+            <span class="filter-chip" data-filter="removed">Removed (<span id="count-rem-secs">0</span>)</span>
+            <span class="filter-chip" data-filter="deduplicated">Deduplicated (<span id="count-dedup-secs">0</span>)</span>
+            <span class="filter-chip" data-filter="protected">Protected Evidence (<span id="count-prot-secs">0</span>)</span>
+          </div>
+        </div>
+
+        <div class="sections-accordion-list" id="sections-audit-list">
+          <!-- Dynamically populated sections -->
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: BENCHMARK LAB -->
+    <section class="tab-pane" id="tab-benchmarks" role="tabpanel">
+      <div class="pane-header">
+        <div>
+          <h2>Benchmark Lab</h2>
+          <p class="pane-subtitle">Inspect the 30+ reproducible test cases across all critical edge categories.</p>
+        </div>
+        <div class="benchmark-controls">
+          <button class="btn btn-primary" id="btn-run-all-benchmarks">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Execute All Benchmarks
+          </button>
+        </div>
+      </div>
+
+      <!-- Benchmark Category Filter -->
+      <div class="benchmark-filter-bar">
+        <input type="text" id="benchmark-search" placeholder="Search benchmark cases, categories, or identifiers..." class="search-input" />
+        <select id="benchmark-category-filter" class="input-select">
+          <option value="all">All Categories</option>
+          <!-- Dynamically populated -->
+        </select>
+      </div>
+
+      <!-- Benchmark Running State Banner -->
+      <div class="benchmark-running-banner hidden" id="benchmark-running-banner">
+        <div class="spinner"></div>
+        <div class="running-info">
+          <h4>Running Evaluation Suite...</h4>
+          <p>Processing 30+ cases through Context Surgeon engine.</p>
+        </div>
+      </div>
+
+      <!-- Benchmark Cases Grid -->
+      <div class="benchmark-cards-grid" id="benchmark-cases-list">
+        <!-- Dynamically rendered cases -->
+      </div>
+    </section>
+
+    <!-- TAB 4: EVALUATION RESULTS -->
+    <section class="tab-pane" id="tab-results" role="tabpanel">
+      <div class="pane-header">
+        <div>
+          <h2>Evaluation Results & Target Verification</h2>
+          <p class="pane-subtitle">Aggregated statistical validation against the MVP proposal criteria.</p>
+        </div>
+        <div class="export-actions">
+          <button class="btn btn-secondary" id="btn-export-csv">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export CSV
+          </button>
+          <button class="btn btn-secondary" id="btn-export-json">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            Export JSON
+          </button>
+        </div>
+      </div>
+
+      <!-- Target Validation Cards -->
+      <div class="grid grid-4 targets-grid">
+        <div class="card target-card" id="card-target-1">
+          <div class="target-header">
+            <span class="target-title">Target 1: Mean Reduction</span>
+            <span class="target-badge" id="badge-target-1">Checking...</span>
+          </div>
+          <div class="target-criterion">Required: &ge; 30.0% Mean Reduction</div>
+          <div class="target-measured" id="val-target-1">--%</div>
+          <p class="target-desc">Evaluates average context compression across all benchmark cases.</p>
+        </div>
+
+        <div class="card target-card" id="card-target-4">
+          <div class="target-header">
+            <span class="target-title">Stretch Target: 95%</span>
+            <span class="target-badge" id="badge-target-4">Measured</span>
+          </div>
+          <div class="target-criterion">Goal: &ge; 95% on Redundant Inputs</div>
+          <div class="target-measured" id="val-target-4">-- cases</div>
+          <p class="target-desc">Cases reaching &ge; 95% token reduction with 100% evidence preservation.</p>
+        </div>
+
+        <div class="card target-card" id="card-target-2">
+          <div class="target-header">
+            <span class="target-title">Target 2: Answer Quality</span>
+            <span class="target-badge pending" id="badge-target-2">Offline Verified</span>
+          </div>
+          <div class="target-criterion">Required: Full-correct rate within 5% of original</div>
+          <div class="target-measured" id="val-target-2">100% Evidence</div>
+          <p class="target-desc">Critical evidence retention verified at 100%. Optional LLM provider comparison can be toggled.</p>
+        </div>
+
+        <div class="card target-card" id="card-target-3">
+          <div class="target-header">
+            <span class="target-title">Target 3: Engine Latency</span>
+            <span class="target-badge" id="badge-target-3">Checking...</span>
+          </div>
+          <div class="target-criterion">Required: p95 &lt; 100.0 ms</div>
+          <div class="target-measured" id="val-target-3">-- ms</div>
+          <p class="target-desc">Local Python preprocessing execution time across all test cases.</p>
+        </div>
+      </div>
+
+      <!-- Category Summary Table -->
+      <div class="card table-container">
+        <div class="table-header">
+          <h3>Category Performance Breakdown</h3>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table" id="table-category-summary">
+            <thead>
+              <tr>
+                <th>Category</th>
+                <th>Test Cases</th>
+                <th>Avg Reduction %</th>
+                <th>Critical Fact Retention</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-category-summary">
+              <tr><td colspan="4" class="text-center">Loading evaluation metrics...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Case-by-Case Results Table -->
+      <div class="card table-container">
+        <div class="table-header">
+          <h3>Detailed Benchmark Case Results</h3>
+          <span class="caption">Real computed results exported from benchmarks/results.json</span>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table" id="table-case-results">
+            <thead>
+              <tr>
+                <th>Case ID</th>
+                <th>Category</th>
+                <th>Original</th>
+                <th>Compressed</th>
+                <th>Reduction %</th>
+                <th>Target Status</th>
+                <th>Latency (ms)</th>
+                <th>Facts Retained</th>
+                <th>Budget Status</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-case-results">
+              <tr><td colspan="9" class="text-center">Loading case evaluations...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: HOW IT WORKS -->
+    <section class="tab-pane" id="tab-how-it-works" role="tabpanel">
+      <div class="pane-header">
+        <div>
+          <h2>Architectural Deep Dive</h2>
+          <p class="pane-subtitle">The 5-Stage Deterministic Context Compression Pipeline</p>
+        </div>
+      </div>
+
+      <div class="card pipeline-card">
+        <div class="pipeline-diagram">
+          <div class="stage-step">
+            <div class="step-num">01</div>
+            <div class="step-content">
+              <h4>Stage 1: Multi-Modal Segmentation</h4>
+              <p>Extracts identifiable context boundaries. Message conversation turns (User:, Assistant:), fenced code blocks, and JSON records are preserved as indivisible units.</p>
+            </div>
+          </div>
+
+          <div class="stage-step">
+            <div class="step-num">02</div>
+            <div class="step-content">
+              <h4>Stage 2: Deduplication &amp; Rarity Ranking</h4>
+              <p>Hashes remove exact duplicate snippets. Calculates inverse term frequencies (TF-IDF rarity) and query identifier matches to score non-stopwords.</p>
+            </div>
+          </div>
+
+          <div class="stage-step">
+            <div class="step-num">03</div>
+            <div class="step-content">
+              <h4>Stage 3: Evidence Protection &amp; Expansion</h4>
+              <p>Conservative protection locks numbers, dates, times, currency, and negations ("must not", "prohibited"). Symbol graphs automatically pull in referenced Python dependencies.</p>
+            </div>
+          </div>
+
+          <div class="stage-step">
+            <div class="step-num">04</div>
+            <div class="step-content">
+              <h4>Stage 4: Token-Budget-Aware Selection</h4>
+              <p>Greedily selects highest-priority sections under budget. If critical evidence exceeds the budget, it retains the evidence and emits a transparent budget warning.</p>
+            </div>
+          </div>
+
+          <div class="stage-step">
+            <div class="step-num">05</div>
+            <div class="step-content">
+              <h4>Stage 5: Audit &amp; Explanation</h4>
+              <p>Provides complete decision transparency for every section: retained, removed, or deduplicated, with human-readable rationale and metrics.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Architecture Diagram & Guarantees -->
+      <div class="grid grid-2 info-grid">
+        <div class="card">
+          <div class="card-header">
+            <h3>Pipeline Architecture Flow</h3>
+          </div>
+          <div class="diagram-box">
+            <pre class="code-box">
+User Application Request
+       │
+       ▼
+┌───────────────────────────────┐
+│     Context Surgeon Core      │
+│  ├── Stage 1: Segment         │
+│  ├── Stage 2: Deduplicate     │
+│  ├── Stage 3: Protect Evidence│
+│  ├── Stage 4: Budget Select   │
+│  └── Stage 5: Explain Decision│
+└──────────────┬────────────────┘
+       │
+       ├─► System Prompt (Unchanged)
+       ├─► Compressed Supporting Context
+       ├─► User Query (Unchanged)
+       │
+       ▼
+ Downstream LLM (Local or Cloud)
+            </pre>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>Engineering Guarantees</h3>
+          </div>
+          <ul class="bullet-list">
+            <li><strong>Zero Silo LLM Requirement:</strong> The entire 5-stage compression pipeline runs locally on CPU in sub-10ms without requiring an LLM call or API key.</li>
+            <li><strong>Immutability Guarantee:</strong> System instructions and user queries remain 100% bit-for-bit unchanged. Only supporting context is pruned.</li>
+            <li><strong>Chronological Order:</strong> Retained sections are reassembled in their exact original chronological document sequence.</li>
+            <li><strong>No Silent Truncation:</strong> If a budget is too small to safely fit facts, a warning is returned rather than risking hallucination.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Notification Toast -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
