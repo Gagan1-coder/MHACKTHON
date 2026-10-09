@@ -350,3 +350,5 @@ Follow this 3-minute walkthrough during live hackathon judging:
 - **Extractive vs. Abstractive:** Context Surgeon selects whole segments rather than rewriting text. This guarantees zero hallucination but preserves the verbatim phrasing of retained paragraphs.
 - **Language Symbol Parsing:** Python code dependency traversal is built-in; support for other languages currently relies on regex identifier matching.
 - **Answer-Quality Evaluation:** Core evidence retention is verified offline; optional LLM-based generative answer comparison is marked as pending when no external LLM API key is provided.
+#   M H A C K T H O N  
+ 
