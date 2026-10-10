@@ -121,6 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setupNavigation();
   setupCompressorInputs();
   setupActionButtons();
+  setupCustomBenchmarks();
   checkBackendHealth();
   loadBenchmarkCases();
   loadEvaluationResults();
@@ -527,10 +528,14 @@ function renderSectionAuditList() {
 // BENCHMARK LAB
 // -----------------------------------------------------------------------------
 async function loadBenchmarkCases() {
+  state.benchmarkCases = readCustomBenchmarks();
+  populateCategoryFilter();
+  renderBenchmarkCards();
   try {
     const res = await fetch('/api/benchmarks');
     if (res.ok) {
-      state.benchmarkCases = await res.json();
+      const builtInCases = await res.json();
+      state.benchmarkCases = [...builtInCases, ...readCustomBenchmarks()];
       elements.kpiBenchmarkCount.textContent = state.benchmarkCases.length;
       populateCategoryFilter();
       renderBenchmarkCards();
@@ -584,7 +589,7 @@ function renderBenchmarkCards() {
         <div class="case-facts-list">${factsHtml}</div>
       </div>
       <div class="case-card-footer">
-        <span class="case-budget">Budget: <strong>${c.target_tokens} tokens</strong></span>
+        <span class="case-budget">Budget: <strong>${Number(c.target_tokens)} tokens</strong></span>
         <button class="btn btn-secondary btn-chip load-case-btn" style="padding:0.35rem 0.75rem;">
           Load into Compressor
         </button>
@@ -601,8 +606,119 @@ function renderBenchmarkCards() {
       switchTab('tab-compressor');
     });
 
+    if (c.is_custom) {
+      const runButton = document.createElement('button');
+      runButton.className = 'btn btn-primary btn-chip';
+      runButton.textContent = 'Run Benchmark';
+      runButton.addEventListener('click', () => runCustomBenchmark(c, runButton));
+      card.appendChild(runButton);
+      const removeButton = document.createElement('button');
+      removeButton.className = 'btn btn-secondary btn-chip';
+      removeButton.textContent = 'Remove Saved Benchmark';
+      removeButton.addEventListener('click', () => {
+        try {
+          localStorage.setItem('context-surgeon-custom-benchmarks', JSON.stringify(readCustomBenchmarks().filter(item => item.case_id !== c.case_id)));
+          state.benchmarkCases = state.benchmarkCases.filter(item => item.case_id !== c.case_id);
+          elements.kpiBenchmarkCount.textContent = state.benchmarkCases.length;
+          populateCategoryFilter();
+          renderBenchmarkCards();
+        } catch { showToast('Unable to update browser storage.', 'error'); }
+      });
+      card.appendChild(removeButton);
+    }
     elements.benchmarkCasesList.appendChild(card);
   });
+}
+
+function readCustomBenchmarks() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('context-surgeon-custom-benchmarks') || '[]');
+    return Array.isArray(saved) ? saved.filter(c => c && c.is_custom === true &&
+      typeof c.case_id === 'string' && typeof c.context === 'string' &&
+      typeof c.query === 'string' && typeof c.category === 'string' &&
+      typeof c.notes === 'string' && Number.isInteger(c.target_tokens) && c.target_tokens > 0 &&
+      Array.isArray(c.expected_critical_facts) && c.expected_critical_facts.every(f => typeof f === 'string')) : [];
+  } catch { return []; }
+}
+
+function setupCustomBenchmarks() {
+  document.getElementById('custom-benchmark-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    const value = name => document.getElementById(`custom-${name}`).value;
+    const benchmark = {
+      case_id: `custom-${crypto.randomUUID()}`,
+      category: 'Custom benchmark',
+      notes: value('name').trim(),
+      system_prompt: value('system'),
+      context: value('context'),
+      query: value('query'),
+      target_tokens: Number(value('budget')),
+      expected_critical_facts: [...new Set(value('facts').split(/\r?\n/).map(f => f.trim()).filter(Boolean))],
+      mode: value('mode'),
+      is_custom: true
+    };
+    if (!benchmark.notes || !benchmark.context.trim() || !benchmark.query.trim() ||
+        !Number.isInteger(benchmark.target_tokens) || benchmark.target_tokens < 1) {
+      showToast('Enter a name, context, question and a positive whole-number budget.', 'warning');
+      return;
+    }
+    try {
+      localStorage.setItem('context-surgeon-custom-benchmarks', JSON.stringify([...readCustomBenchmarks(), benchmark]));
+    } catch {
+      showToast('Could not save this benchmark. Browser storage may be full or unavailable.', 'error');
+      return;
+    }
+    state.benchmarkCases.push(benchmark);
+    elements.kpiBenchmarkCount.textContent = state.benchmarkCases.length;
+    elements.benchmarkSearch.value = '';
+    populateCategoryFilter();
+    renderBenchmarkCards();
+    showToast('Benchmark saved in this browser.');
+    if (event.submitter?.value === 'run') await runCustomBenchmark(benchmark, event.submitter);
+  });
+}
+
+async function runCustomBenchmark(benchmark, button) {
+  const panel = document.getElementById('custom-benchmark-result');
+  if (panel.dataset.running === 'true') {
+    showToast('Wait for the current custom benchmark to finish.', 'warning');
+    return;
+  }
+  panel.dataset.running = 'true';
+  button.disabled = true;
+  panel.classList.remove('hidden');
+  panel.textContent = `Running ${benchmark.notes}…`;
+  try {
+    const response = await fetch('/api/compress', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ system_prompt: benchmark.system_prompt || '', context: benchmark.context,
+        query: benchmark.query, target_tokens: benchmark.target_tokens, mode: benchmark.mode || 'fast_local' })
+    });
+    if (!response.ok) throw new Error(`Engine returned HTTP ${response.status}. Check your inputs and backend connection.`);
+    const result = await response.json();
+    const facts = benchmark.expected_critical_facts;
+    const compressed = result.compressed_context.toLowerCase();
+    const missing = facts.filter(f => !compressed.includes(f.toLowerCase()));
+    const absent = facts.filter(f => !benchmark.context.toLowerCase().includes(f.toLowerCase()));
+    const factSummary = facts.length ? `${facts.length - missing.length} / ${facts.length} expected facts retained` : 'Fact retention not measured: no expected facts provided.';
+    panel.innerHTML = `<h3>${escapeHtml(benchmark.notes)} — Results</h3>
+      <p>${escapeHtml(result.mode)} · ${result.original_tokens} → ${result.compressed_tokens} tokens · ${result.reduction_percentage}% reduction · ${result.compression_time_ms} ms</p>
+      <p>${result.budget_met ? 'Budget met' : 'Budget exceeded'} · ${escapeHtml(factSummary)}</p>
+      <p>Missing facts: ${escapeHtml(missing.join('; ') || 'None')}</p>
+      ${absent.length ? `<p>These expected facts were absent from the original context: ${escapeHtml(absent.join('; '))}</p>` : ''}
+      ${(result.warnings || []).map(w => `<p>${escapeHtml(w)}</p>`).join('')}
+      <div class="grid grid-2"><div><h4>Original context</h4><pre>${escapeHtml(benchmark.context)}</pre></div><div><h4>Compressed context</h4><pre>${escapeHtml(result.compressed_context)}</pre></div></div>
+      <p>Answer quality is not measured. Fact checks use case-insensitive text matching.</p>
+      <button type="button" class="btn btn-secondary">Download Result JSON</button>`;
+    panel.querySelector('button').addEventListener('click', () => downloadFile(
+      JSON.stringify({ benchmark, result, fact_check: { status: facts.length ? 'evaluated' : 'not_measured', missing_facts: missing, facts_absent_from_source: absent } }, null, 2),
+      `${benchmark.case_id}-result.json`, 'application/json'));
+  } catch (error) {
+    panel.textContent = `Benchmark failed: ${error.message} Your saved case is available below to retry.`;
+  } finally {
+    button.disabled = false;
+    panel.dataset.running = 'false';
+  }
 }
 
 async function runAllBenchmarks() {

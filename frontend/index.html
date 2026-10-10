@@ -430,10 +430,28 @@
         <div class="benchmark-controls">
           <button class="btn btn-primary" id="btn-run-all-benchmarks">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-            Execute All Benchmarks
+            Execute Built-in Benchmarks
           </button>
         </div>
       </div>
+
+      <details class="card custom-benchmark" id="custom-benchmark-builder">
+        <summary>Add New Benchmark</summary>
+        <p>Test your own context. Saved benchmarks stay in this browser. Expected facts are checked as case-insensitive text matches; this does not score an LLM answer.</p>
+        <form id="custom-benchmark-form">
+          <div class="grid grid-2">
+            <div class="form-group"><label for="custom-name">Benchmark name</label><input id="custom-name" required maxlength="120" placeholder="My delivery test" /></div>
+            <div class="form-group"><label for="custom-budget">Token budget</label><input id="custom-budget" type="number" required min="1" step="1" value="500" /></div>
+          </div>
+          <div class="form-group"><label for="custom-system">System prompt (optional)</label><textarea id="custom-system" rows="2" placeholder="You are a helpful assistant."></textarea></div>
+          <div class="form-group"><label for="custom-context">Your context</label><textarea id="custom-context" rows="7" required placeholder="Paste the text, conversation, records or code you want to test."></textarea></div>
+          <div class="form-group"><label for="custom-query">Question</label><input id="custom-query" required placeholder="What should the engine preserve evidence for?" /></div>
+          <div class="form-group"><label for="custom-facts">Expected facts (optional, one per line)</label><textarea id="custom-facts" rows="3" placeholder="ORD-842&#10;12 October&#10;15 October"></textarea></div>
+          <div class="form-group"><label for="custom-mode">Engine</label><select id="custom-mode" class="input-select"><option value="fast_local">Fast Local</option><option value="recursive">Recursive</option><option value="auto">Auto</option></select></div>
+          <div class="export-actions"><button class="btn btn-secondary" type="submit" value="save">Save Benchmark</button><button class="btn btn-primary" type="submit" value="run">Save &amp; Run Benchmark</button></div>
+        </form>
+      </details>
+      <section class="card custom-benchmark hidden" id="custom-benchmark-result" aria-live="polite"></section>
 
       <!-- Benchmark Category Filter -->
       <div class="benchmark-filter-bar">

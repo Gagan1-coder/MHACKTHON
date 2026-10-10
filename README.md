@@ -39,7 +39,98 @@ flowchart TD
 
 ---
 
-## 3. Core Features
+## 3. Full Architecture: How the System Is Used
+
+Context Surgeon is split into a browser dashboard, a FastAPI service, and a
+deterministic compression/evaluation core. The design keeps the original
+system instruction and the current user query outside the compression target:
+only the supporting context is selected and reordered.
+
+### End-to-end request flow
+
+```mermaid
+sequenceDiagram
+    participant U as User / Client App
+    participant F as Vite Dashboard
+    participant A as FastAPI API
+    participant S as Pydantic Schemas
+    participant C as ContextSurgeon
+    participant T as Tokenizer
+    participant R as RLM Engine (optional)
+    participant L as Downstream LLM
+
+    U->>F: Enter system prompt, context, query, target budget
+    F->>A: POST /api/compress
+    A->>S: Validate request and response contract
+    A->>C: Compress supporting context
+    C->>T: Count original and selected tokens
+    alt fast_local or auto with <= 1200 source tokens
+        C->>C: Segment, rank/deduplicate, protect, select, explain
+    else recursive or auto with > 1200 source tokens
+        C->>R: Externalize, search, inspect, expand, select
+        R-->>C: Context plus trajectory and usage statistics
+    end
+    C-->>A: Compressed context, metrics, warnings, section audit
+    A-->>F: JSON response
+    F-->>U: Diff view, evidence audit, metrics and export controls
+    U->>L: Unchanged system prompt + compressed context + unchanged query
+```
+
+### Module responsibility map
+
+| Module | What it is used for | Why this module exists | Used by / output consumed by |
+| :--- | :--- | :--- | :--- |
+| `run.py` | Starts Uvicorn and optionally pre-runs the benchmark suite. | Provides one predictable backend entry point for local development and judging. | `npm run dev`, the FastAPI service. |
+| `backend/main.py` | Defines the FastAPI app, CORS policy, health endpoint, compression endpoint, benchmark endpoints and static-file mounting. | Keeps transport, validation errors and HTTP behavior separate from compression logic. | Browser dashboard, API clients and Swagger at `/docs`. |
+| `backend/schemas.py` | Defines `CompressRequest`, `CompressResponse`, section audit records and benchmark metric models. | Gives the frontend and API clients a stable, typed contract and validates budgets before execution. | `main.py`, `compressor.py`, `evaluator.py` and frontend JSON handling. |
+| `backend/compressor.py` | Implements the default five-stage extractive pipeline and dispatches between `fast_local`, `recursive` and `auto` modes. | Centralizes relevance ranking and safety rules without requiring an LLM call or rewriting retained text. | `main.py`, `evaluator.py` and the standalone Python API. |
+| `backend/tokenizer.py` | Counts and encodes text with `tiktoken`, with a deterministic offline fallback. | Budget decisions must use measured token counts; the fallback keeps air-gapped runs reproducible. | Compressor, RLM store, evaluator and `/api/health`. |
+| `backend/rlm_engine.py` | Implements recursive large-context processing with `ContextStore`, `SafeExplorationREPL` and trajectory statistics. | Keeps very large source documents external to the prompt and retrieves only query-relevant evidence. | `ContextSurgeon` when `mode=recursive` or `mode=auto` selects recursive processing. |
+| `backend/evaluator.py` | Runs every benchmark case, checks expected-fact retention, calculates latency/reduction metrics and exports JSON/CSV. | Separates repeatable measurement from live compression and makes unsupported answer-quality claims visible as pending. | `/api/evaluate`, `run.py`, `benchmarks/run_benchmark.py` and the Results tab. |
+| `benchmarks/cases.json` | Stores the benchmark contexts, queries, budgets and expected critical facts. | Makes regression tests and performance comparisons reproducible instead of relying on hand-picked demos. | `BenchmarkEvaluator` and the CLI benchmark runner. |
+| `benchmarks/run_benchmark.py` | Compares Fast Local and Recursive RLM modes from the command line. | Provides a repeatable head-to-head report for latency, reduction and evidence retention. | Developers, evaluators and exported benchmark artifacts. |
+| `frontend/index.html` | Defines the dashboard structure, tabs, forms and result panels. | Gives users a visual workflow for compression, auditing and benchmark execution. | Vite serves it as the dashboard shell. |
+| `frontend/app.js` | Calls the API, monitors health, renders diffs/audit trails, runs benchmarks and exports data. | Keeps browser interaction separate from the Python engine while exposing its decisions transparently. | `index.html` controls and FastAPI JSON endpoints. |
+| `frontend/styles.css` | Provides the dashboard layout, status states, tables, diff view and responsive styling. | Makes retained, removed and protected evidence easy to inspect during a demo or investigation. | Browser only; it does not affect compression decisions. |
+| `vite.config.js` | Runs the frontend on port `5173` and proxies `/api` to port `8000`. | Avoids cross-origin URL changes during local development and lets the dashboard call relative API paths. | Vite development server and `npm run dev`. |
+| `tests/` | Verifies segmentation, preservation rules, recursive behavior, API responses, benchmarks and edge cases. | Prevents optimization from silently changing factual behavior or the public API. | `python -m pytest tests/ -v`. |
+| `docs/` | Contains the deeper algorithm, architecture, evaluation and limitations notes. | Keeps design rationale available without overloading the runtime modules. | Developers, reviewers and maintainers. |
+
+### Which operating mode should be used?
+
+| Mode | Selection behavior | Best fit | Main trade-off |
+| :--- | :--- | :--- | :--- |
+| `fast_local` | Runs the in-memory five-stage pipeline. This is the default. | Normal chat history, support tickets, logs, repeated records and interactive requests. | It analyzes the complete context in one local pass. |
+| `recursive` | Stores the source in `ContextStore`, then searches and inspects relevant chunks through the bounded REPL. | Very large documents, long manuals, multi-chapter logs and needle-in-a-haystack retrieval. | It performs more observable exploration and may retain a larger evidence set. |
+| `auto` | Uses `fast_local` for source contexts up to 1,200 tokens and `recursive` above that threshold. | Applications that do not want to choose a mode per request. | The threshold is a routing heuristic, not a quality guarantee. |
+
+### What happens inside the Fast Local pipeline?
+
+1. **Segment (`_stage_1_segment`)** — identifies sentence, paragraph, conversation-turn, code-block, JSON, CSV and log boundaries. Code and structured records are kept as safe units where splitting would destroy meaning.
+2. **Rank and deduplicate (`_stage_2_deduplicate_and_rank`)** — removes exact duplicates and scores sections using query overlap, term rarity, identifiers and numeric targets.
+3. **Protect and expand (`_stage_3_protect_and_expand`)** — marks dates, quantities, negations, corrections, identifiers, structured records and referenced baseline facts as protected. Code dependencies and linked records can pull related sections back into the candidate set.
+4. **Select (`_stage_4_select`)** — chooses the highest-value sections under the token budget, restores original order, and emits a warning when the budget is too small to safely retain the required evidence.
+5. **Explain and format** — returns the compressed text plus a per-section decision, score, reason, protection rules and token count. No retained sentence is paraphrased by the compressor.
+
+### How a client uses the result
+
+The API response is intended to be passed to a downstream model as three
+separate values:
+
+```text
+system message:      response.system_prompt       # unchanged
+supporting context:  response.compressed_context  # selected evidence
+user message:        response.query                # unchanged
+```
+
+The client can also use `warnings`, `budget_met`, `evidence_preservation_status`
+and `sections` to block an unsafe request, show an audit record, or fall back to
+the original context. The compressor is therefore a preprocessing module, not
+the answer-generating module.
+
+---
+
+## 4. Core Features
 
 - **Query-Aware Relevance Scoring:** Ranks context segments based on query-term rarity (TF-IDF), entity IDs, and numerical targets instead of arbitrary positional truncation.
 - **Conservative Evidence Protection:**
@@ -57,7 +148,7 @@ flowchart TD
 
 ---
 
-## 4. Technology Stack
+## 5. Technology Stack
 
 - **Backend:** Python 3.11+ / 3.14+, FastAPI, Pydantic v2, Uvicorn.
 - **Frontend Dev Server:** Vite 5 serving frontend at `http://localhost:5173`.
@@ -68,7 +159,7 @@ flowchart TD
 
 ---
 
-## 5. Installation & Setup
+## 6. Installation & Setup
 
 ### Complete Setup Workflow (Windows Command Prompt / PowerShell)
 
@@ -93,7 +184,7 @@ npm run dev
 
 ---
 
-## 6. Running the Application
+## 7. Running the Application
 
 ### Single Command Launcher:
 ```cmd
@@ -111,7 +202,7 @@ Press `Ctrl+C` once in the terminal to gracefully terminate both frontend and ba
 
 ---
 
-## 7. API Reference
+## 8. API Reference
 
 ### `POST /api/compress`
 Compresses supporting context based on query relevance and token budget.
@@ -218,7 +309,7 @@ Compresses supporting context based on query relevance and token budget.
 
 ---
 
-## 8. Python Library Usage
+## 9. Python Library Usage
 
 Context Surgeon can be used as a standalone Python library in your own pipelines:
 
@@ -239,7 +330,7 @@ print(result.compressed_context)
 
 ---
 
-## 9. Test Execution
+## 10. Test Execution
 
 Context Surgeon includes automated unit, integration, and correctness test suites:
 
@@ -267,7 +358,7 @@ python -m pytest tests/ -v
 
 ---
 
-## 10. Hybrid Context Engine: Fast Local vs. Recursive RLM
+## 11. Hybrid Context Engine: Fast Local vs. Recursive RLM
 
 Context Surgeon features a **Hybrid Context Engine** offering two distinct operating modes:
 
@@ -290,7 +381,7 @@ Context Surgeon features a **Hybrid Context Engine** offering two distinct opera
 
 ---
 
-## 11. Benchmark Evaluation & Measured Comparative Results
+## 12. Benchmark Evaluation & Measured Comparative Results
 
 Run the comparative CLI benchmark runner:
 ```bash
@@ -316,7 +407,100 @@ Results are exported to:
 
 ---
 
-## 11. Hackathon Demonstration Script (For Evaluators)
+## 13. Answer-Quality Comparison
+
+### Add and run your own benchmark
+
+Open **Benchmark Lab → Add New Benchmark**. Enter a name, your context,
+question, token budget, and an engine mode. Optionally add a system prompt and
+expected facts, one per line. Choose **Save & Run Benchmark** to see original
+and compressed text, token reduction, latency, budget warnings, and missing
+facts. **Save Benchmark** saves a case for later; its card has a **Run Benchmark**
+button and can also load the context into the Compressor for detailed auditing.
+
+Custom cases are stored in this browser's local storage, including their context,
+and can be removed from their cards. They are separate from the built-in suite
+and do not replace its saved results. Download Result JSON exports the custom
+input and measured output. Expected facts use case-insensitive substring checks;
+facts missing from the original input are flagged separately. Without expected
+facts, retention is reported as unmeasured. This check does not generate or grade
+an LLM answer.
+
+The purpose of compression is not just to reduce tokens; it is to preserve the
+answer that a downstream LLM would produce. A fair comparison must therefore
+use the same system prompt, user query, model, model settings and grading
+rubric for both inputs:
+
+```text
+Run A: system prompt + full supporting context + query
+Run B: system prompt + compressed supporting context + query
+
+Compare: correctness, required facts, constraints, identifiers, dates/numbers,
+and whether Run B degraded relative to Run A.
+```
+
+### Concrete preservation example
+
+This example uses the delivery-delay preset. It shows what the compressor is
+expected to preserve; it is not presented as a live LLM generation because this
+repository does not configure a downstream LLM provider.
+
+| Input | Content relevant to the answer |
+| :--- | :--- |
+| Full context | `Order ORD-842 was promised for 12 October. The delivery was later revised to 15 October. The customer also prefers blue packaging. Hello, thank you for contacting support.` |
+| Compressed context | `Order ORD-842 was promised for 12 October. The delivery was later revised to 15 October.` |
+| Same system prompt/query | `You are a logistics assistant.` / `How many days late is order ORD-842?` |
+| Expected answer | `The order is 3 days late.` |
+| Evidence needed | `ORD-842`, `12 October`, `15 October`, and the fact that the second date is a later revision. |
+
+The greeting and packaging preference are safe to remove because they do not
+affect the requested calculation. The baseline date is retained alongside the
+correction because keeping only `15 October` would lose the comparison needed to
+calculate lateness.
+
+### What is measured today
+
+The evaluator has two separate quality layers so that token savings are not
+mistaken for answer quality:
+
+1. **Offline evidence-quality comparison:** `backend/evaluator.py` checks every
+   benchmark case's `expected_critical_facts` against the compressed context.
+   This is deterministic and works without an API key.
+2. **Generative answer-quality comparison:** the response schema reserves
+   `original_answer`, `compressed_answer`, `original_score`,
+   `compressed_score`, `degraded` and `scoring_explanation` for evaluating the
+   two downstream answers. These fields remain `pending` until an LLM provider
+   and grading step are configured.
+
+Latest persisted benchmark evidence:
+
+| Quality / efficiency metric | Full context baseline | Compressed context result | Interpretation |
+| :--- | :---: | :---: | :--- |
+| Critical facts available to the answer | 100% by definition | **100.0% retained across 40 cases** | No expected benchmark fact was lost in the recorded run. |
+| Context size | 100% | **43.22% of original on average** | Equivalent to **56.78% mean token reduction**. |
+| P95 compression latency | N/A | **5.38 ms** | Local preprocessing stays below the 100 ms target. |
+| Downstream full-correct answer rate | Not measured | Not measured | Requires the same configured LLM to answer both versions. |
+| Answer degradation count | Not measured | Not measured | Cannot be claimed from evidence retention alone. |
+
+### Recommended answer-quality experiment
+
+To complete the generative comparison, run each case twice through the same
+downstream model and record:
+
+- `original_full_correct_rate`: full context answer correctness;
+- `compressed_full_correct_rate`: compressed context answer correctness;
+- `diff_full_correct_rate`: whether the two answers agree on required facts;
+- `degraded_cases_count`: cases where compression changes a correct answer into
+  an incorrect one.
+
+The primary acceptance target is that the compressed full-correct rate stays
+within five percentage points of the full-context rate. Until that experiment
+is configured, the dashboard and exported results intentionally report answer
+quality as **Pending** rather than fabricating a score.
+
+---
+
+## 14. Hackathon Demonstration Script (For Evaluators)
 
 Follow this 3-minute walkthrough during live hackathon judging:
 
@@ -339,13 +523,13 @@ Follow this 3-minute walkthrough during live hackathon judging:
 4. **Inspect the Audit Trail:**
    Expand the sections in the **Explainable Section Audit Trail** panel to demonstrate full transparency into why every section was retained, removed, or deduplicated.
 5. **Benchmark Lab & Results:**
-   Navigate to the **Benchmark Lab** tab to show the 30 distinct categories, or click **Execute All Benchmarks** to view live progress.
+   Navigate to the **Benchmark Lab** tab to show the 40 benchmark cases, or click **Execute All Benchmarks** to view live progress.
 6. **Export Data:**
    In the **Evaluation Results** tab, click **Export CSV** to show that all experimental data can be inspected in Excel or pandas.
 
 ---
 
-## 12. Known Limitations & Future Work
+## 15. Known Limitations & Future Work
 
 - **Extractive vs. Abstractive:** Context Surgeon selects whole segments rather than rewriting text. This guarantees zero hallucination but preserves the verbatim phrasing of retained paragraphs.
 - **Language Symbol Parsing:** Python code dependency traversal is built-in; support for other languages currently relies on regex identifier matching.

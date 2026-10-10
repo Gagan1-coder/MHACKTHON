@@ -1465,6 +1465,14 @@ textarea {
   font-size: 0.8rem;
   transition: all var(--transition-fast);
 }
+.custom-benchmark { padding: 1.5rem; margin-bottom: 1.5rem; }
+.custom-benchmark summary { cursor: pointer; font-size: 1.1rem; font-weight: 600; }
+.custom-benchmark p { margin: 1rem 0; color: var(--text-dim); }
+.custom-benchmark .form-group { margin: 1rem 0; }
+.custom-benchmark label { display: block; margin-bottom: .5rem; }
+.custom-benchmark input { width: 100%; }
+.custom-benchmark pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 24rem; overflow: auto; }
+.custom-benchmark .grid > * { min-width: 0; }
 .rlm-step-item:hover {
   background: rgba(15, 23, 42, 0.8);
   border-color: rgba(168, 85, 247, 0.3);
